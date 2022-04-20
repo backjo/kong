@@ -50,6 +50,22 @@ local _log_prefix = "[wrpc-clustering] "
 
 local wrpc_config_service
 
+
+local function handle_export_deflated_reconfigure_payload(self)
+  local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
+  if not ok then
+    -- hard error -> ok == false, p_err has an error message
+    return false, p_err
+  end
+  if not p_err then
+    -- fail from typical return nil, err -> ok == true, p_err == nil, err has an error message
+    return false, err
+  end
+  -- succeeded -> ok == true, p_err == nil, err == nil
+  return true
+end
+
+
 local function get_config_service(self)
   if not wrpc_config_service then
     wrpc_config_service = wrpc.new_service()
@@ -170,7 +186,7 @@ end
 
 function _M:push_config_one_client(client)
   if not self.config_call_rpc or not self.config_call_args then
-    local ok, err = pcall(self.export_deflated_reconfigure_payload, self)
+    local ok, err = handle_export_deflated_reconfigure_payload(self)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
       return
@@ -557,7 +573,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
   end
 
   do
-    local ok, err = pcall(self.export_deflated_reconfigure_payload, self)
+    local ok, err = handle_export_deflated_reconfigure_payload(self)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
     end

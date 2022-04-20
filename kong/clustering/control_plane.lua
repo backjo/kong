@@ -58,6 +58,21 @@ local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
 
 
+local function handle_export_deflated_reconfigure_payload(self)
+  local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
+  if not ok then
+    -- hard error -> ok == false, p_err has an error message
+    return false, p_err
+  end
+  if not p_err then
+    -- fail from typical return nil, err -> ok == true, p_err == nil, err has an error message
+    return false, err
+  end
+  -- succeeded -> ok == true, p_err == nil, err == nil
+  return true
+end
+
+
 local function plugins_list_to_map(plugins_list)
   local versions = {}
   for _, plugin in ipairs(plugins_list) do
@@ -481,10 +496,7 @@ function _M:handle_cp_websocket()
   self.clients[wb] = queue
 
   if not self.deflated_reconfigure_payload then
-    local ok, _, err = pcall(self.export_deflated_reconfigure_payload, self)
-    if not ok then
-      ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err, log_suffix)
-    end
+    _, err = handle_export_deflated_reconfigure_payload(self)
   end
 
   if self.deflated_reconfigure_payload then
@@ -657,7 +669,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     return
   end
 
-  local ok, err = pcall(self.export_deflated_reconfigure_payload, self)
+  local ok, err = handle_export_deflated_reconfigure_payload(self)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
   end
