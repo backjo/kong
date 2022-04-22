@@ -97,7 +97,7 @@ function _M:sync_time()
     -- then the time we obtained is not correct.
     -- However, this practice is not recommended,
     -- so it is not handled.
-    -- ngx.update_time()
+    ngx.update_time()
 
     self.real_time = ngx_now()
 
